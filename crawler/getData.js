@@ -4,7 +4,7 @@ const WriteCsv = require('./helpers/writeCsv');
 
 module.exports = getProducts = async (page, products) => {
   try {
-    let outputArr = []; 
+    let outputArr = [];
     const selectors = {
       title: 'h1[class="productView-title"]',
       price: 'span[data-product-price-without-tax]',
@@ -28,7 +28,28 @@ module.exports = getProducts = async (page, products) => {
         .trim();
     }
 
+    // let arr = [
+    //   {
+    //     category: 'Boots',
+    //     subCategory: 'Structure Boots',
+    //     productUrl:
+    //       'https://www.fire-etc.com/danner-wildland-tactical-firefighter-boot-8-black/',
+    //   },
+    //   {
+    //     category: 'Boots',
+    //     subCategory: 'Structure Boots',
+    //     productUrl:
+    //       'https://www.fire-etc.com/redback-beeswax-leather-preserve/',
+    //   },
+    //   {
+    //     category: 'Boots',
+    //     subCategory: 'Structure Boots',
+    //     productUrl:
+    //       'https://www.fire-etc.com/fire-dex-fdxl200-leather-structure-boots/',
+    //   },
+    // ];
     for (let i = 0; i < products.length; i++) {
+    // for (let i = 0; i < arr.length; i++) {
       await page.goto(products[i].productUrl, {
         waitUntil: 'networkidle0',
       });
@@ -44,7 +65,7 @@ module.exports = getProducts = async (page, products) => {
         Description: '',
         ImageUrls: '',
         ImageNames: '',
-        Url: products[i].productUrl
+        Url: products[i].productUrl,
       };
 
       // Get title
@@ -88,11 +109,28 @@ module.exports = getProducts = async (page, products) => {
           options = format(value);
         }
         // get options
+        let skuArr = [];
         for (let j = 0; j < list.length; j++) {
           if ((await list[j].$('span')) != null) {
             const value = await list[j].$eval('span', (t) => t.textContent);
             options = options + ` ${format(value.toString())},`;
+            const btnOption = await list[j].$('span');
+            btnOption.click();
+            await page.waitForTimeout(2000);
+            // Get SKU
+            if ((await page.$(selectors.sku)) != null) {
+              const _value = await page.$eval(
+                selectors.sku,
+                (t) => t.textContent
+              );
+              if (!skuArr.includes(_value)) {
+                skuArr.push(_value);
+              }
+            }
           }
+        }
+        if (skuArr.length) {
+          obj.SKU = skuArr.join(', ');
         }
         obj.Options = options;
       }
@@ -143,10 +181,10 @@ module.exports = getProducts = async (page, products) => {
       }
 
       outputArr.push(obj);
-      console.log("Remaining products:", products.length - i)
+      console.log('Remaining products:', products.length - i);
     }
 
-    if (outputArr.length) {
+    if (outputArr.length) { 
       WriteCsv('Products.csv', outputArr);
     } else {
       console.log('Something went wrong');
